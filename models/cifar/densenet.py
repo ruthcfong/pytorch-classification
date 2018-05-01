@@ -2,12 +2,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import os
+
+from torch.autograd import Variable
 
 
 __all__ = ['densenet']
 
 
-from torch.autograd import Variable
+CHECKPOINT_DIR = '/home/ruthfong/pytorch-classification/pretrained'
+model_name = 'densenet'
+model_urls = {model_name: {'cifar10': os.path.join(CHECKPOINT_DIR, 'cifar10', 
+                                        '%s.pth.tar' % model_name),
+                          'cifar100': os.path.join(CHECKPOINT_DIR, 'cifar100', 
+                                        '%s.pth.tar' % model_name)
+                          }
+             }
+
 
 class Bottleneck(nn.Module):
     def __init__(self, inplanes, expansion=4, growthRate=12, dropRate=0):
@@ -76,8 +87,10 @@ class Transition(nn.Module):
 
 class DenseNet(nn.Module):
 
-    def __init__(self, depth=22, block=Bottleneck, 
-        dropRate=0, num_classes=10, growthRate=12, compressionRate=2):
+    def __init__(self, depth=190, block=Bottleneck, 
+        dropRate=0, num_classes=10, growthRate=40, compressionRate=2):
+    #def __init__(self, depth=22, block=Bottleneck, 
+    #    dropRate=0, num_classes=10, growthRate=12, compressionRate=2):
         super(DenseNet, self).__init__()
 
         assert (depth - 4) % 3 == 0, 'depth should be 3n+4'
@@ -142,8 +155,13 @@ class DenseNet(nn.Module):
         return x
 
 
-def densenet(**kwargs):
+def densenet(pretrained=False, dataset='cifar10', **kwargs):
     """
     Constructs a ResNet model.
     """
-    return DenseNet(**kwargs)
+    model = DenseNet(**kwargs)
+    if pretrained:
+        model = nn.DataParallel(model)
+        model.load_state_dict(torch.load(model_urls[model_name][dataset])['state_dict'])
+        model = model.module
+    return model

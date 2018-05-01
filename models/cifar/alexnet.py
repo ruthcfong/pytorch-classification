@@ -2,10 +2,22 @@
 Without BN, the start learning rate should be 0.01
 (c) YANG, Wei 
 '''
+import torch
 import torch.nn as nn
+import os
 
 
 __all__ = ['alexnet']
+
+CHECKPOINT_DIR = '/home/ruthfong/pytorch-classification/pretrained'
+model_name = 'alexnet'
+model_urls = {model_name: {'cifar10': os.path.join(CHECKPOINT_DIR, 'cifar10', 
+                                        '%s.pth.tar' % model_name),
+                          'cifar100': os.path.join(CHECKPOINT_DIR, 'cifar100', 
+                                        '%s.pth.tar' % model_name)
+                          }
+             }
+
 
 
 class AlexNet(nn.Module):
@@ -36,9 +48,19 @@ class AlexNet(nn.Module):
         return x
 
 
-def alexnet(**kwargs):
+def alexnet(pretrained=False, dataset='cifar10', **kwargs):
     r"""AlexNet model architecture from the
     `"One weird trick..." <https://arxiv.org/abs/1404.5997>`_ paper.
     """
     model = AlexNet(**kwargs)
+    if pretrained:
+        if dataset == 'cifar10':
+            model.features = nn.DataParallel(model.features)
+        else:
+            model = nn.DataParallel(model)
+        model.load_state_dict(torch.load(model_urls[model_name][dataset])['state_dict'])
+        if dataset == 'cifar10':
+            model.features = model.features.module
+        else:
+            model = model.module
     return model

@@ -1,9 +1,11 @@
 '''VGG for CIFAR10. FC layers are removed.
 (c) YANG, Wei 
 '''
+import torch
 import torch.nn as nn
-import torch.utils.model_zoo as model_zoo
+#import torch.utils.model_zoo as model_zoo
 import math
+import os
 
 
 __all__ = [
@@ -12,17 +14,25 @@ __all__ = [
 ]
 
 
-model_urls = {
-    'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
-    'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
-    'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
-    'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
-}
+#model_urls = {
+#    'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
+#    'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
+#    'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
+#    'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
+#}
 
+CHECKPOINT_DIR = '/home/ruthfong/pytorch-classification/pretrained'
+model_name = 'vgg19_bn'
+model_urls = {model_name: {'cifar10': os.path.join(CHECKPOINT_DIR, 'cifar10', 
+                                        '%s.pth.tar' % model_name),
+                          'cifar100': os.path.join(CHECKPOINT_DIR, 'cifar100', 
+                                        '%s.pth.tar' % model_name)
+                          }
+             }
 
 class VGG(nn.Module):
 
-    def __init__(self, features, num_classes=1000):
+    def __init__(self, features, num_classes=10):
         super(VGG, self).__init__()
         self.features = features
         self.classifier = nn.Linear(512, num_classes)
@@ -132,7 +142,11 @@ def vgg19(**kwargs):
     return model
 
 
-def vgg19_bn(**kwargs):
+def vgg19_bn(pretrained=False, dataset='cifar10', **kwargs):
     """VGG 19-layer model (configuration 'E') with batch normalization"""
     model = VGG(make_layers(cfg['E'], batch_norm=True), **kwargs)
+    if pretrained:
+        model.features = nn.DataParallel(model.features)
+        model.load_state_dict(torch.load(model_urls[model_name][dataset])['state_dict'])
+        model.features = model.features.module
     return model

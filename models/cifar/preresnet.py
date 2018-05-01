@@ -7,11 +7,24 @@ and
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 (c) YANG, Wei
 '''
+import torch
 import torch.nn as nn
 import math
+import os
 
 
 __all__ = ['preresnet']
+
+
+CHECKPOINT_DIR = '/home/ruthfong/pytorch-classification/pretrained'
+model_name = 'preresnet-110'
+model_urls = {model_name: {'cifar10': os.path.join(CHECKPOINT_DIR, 'cifar10', 
+                                        '%s.pth.tar' % model_name),
+                          'cifar100': os.path.join(CHECKPOINT_DIR, 'cifar100', 
+                                        '%s.pth.tar' % model_name)
+                          }
+             }
+
 
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
@@ -92,7 +105,7 @@ class Bottleneck(nn.Module):
 
 class PreResNet(nn.Module):
 
-    def __init__(self, depth, num_classes=1000):
+    def __init__(self, depth=110, num_classes=10):
         super(PreResNet, self).__init__()
         # Model type specifies number of layers for CIFAR-10 model
         assert (depth - 2) % 6 == 0, 'depth should be 6n+2'
@@ -151,8 +164,13 @@ class PreResNet(nn.Module):
         return x
 
 
-def preresnet(**kwargs):
+def preresnet(pretrained=False, dataset='cifar10', **kwargs):
     """
     Constructs a ResNet model.
     """
-    return PreResNet(**kwargs)
+    model = PreResNet(**kwargs)
+    if pretrained:
+        model = nn.DataParallel(model)
+        model.load_state_dict(torch.load(model_urls[model_name][dataset])['state_dict'])
+        model = model.module
+    return model
