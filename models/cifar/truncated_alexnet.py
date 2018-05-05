@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import os
 from alexnet import AlexNet, alexnet
+import warnings
 
 
 __all__ = ['truncated_alexnet']
@@ -13,10 +14,11 @@ __all__ = ['truncated_alexnet']
 
 class TruncatedAlexNet(AlexNet):
 
-    def __init__(self, num_classes=10):
+    def __init__(self, module_name, num_classes=10):
         super(TruncatedAlexNet, self).__init__(num_classes=10)
         if module_name != 'classifier':
             module_name, module_index = module_name.split('.')
+            module_index = int(module_index)
         assert(module_name in ['features', 'classifier'])
 
         features = [
@@ -36,14 +38,20 @@ class TruncatedAlexNet(AlexNet):
         ]
 
         if module_name == 'features':
+            if isinstance(features[module_index], nn.Conv2d):
+                warnings.warn("%s (%s) is followed by an in-place ReLU; "
+                               "its output will not match the output of the same layer in "
+                               "the original AlexNet architecture, which will be passed through "
+                               "a ReLU." % (module_name, features[module_index]))
             self.features = nn.Sequential(*features[:module_index+1])
-            self.classifier is None
+            hasattr(self, 'classifier')
         else:
+            self.features = nn.Sequential(*features)
             self.classifier = nn.Linear(256, num_classes)
 
     def forward(self, x):
         x = self.features(x)
-        if self.classifier is None:
+        if hasattr(self, 'classifier'):
             return x
         x = x.view(x.size(0), -1)
         x = self.classifier(x)

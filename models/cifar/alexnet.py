@@ -22,10 +22,10 @@ model_urls = {model_name: {'cifar10': os.path.join(CHECKPOINT_DIR, 'cifar10',
 
 class AlexNet(nn.Module):
 
-    def __init__(self, num_classes=10):
+    def __init__(self, in_channels=3, num_classes=10):
         super(AlexNet, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=5),
+            nn.Conv2d(in_channels, 64, kernel_size=11, stride=4, padding=5),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(64, 192, kernel_size=5, padding=2),
@@ -58,9 +58,11 @@ def alexnet(pretrained=False, dataset='cifar10', **kwargs):
             model.features = nn.DataParallel(model.features)
         else:
             model = nn.DataParallel(model)
-        model.load_state_dict(torch.load(model_urls[model_name][dataset])['state_dict'])
+        checkpoint = torch.load(model_urls[model_name][dataset], 
+                map_location=lambda storage, loc: storage)
+        model.load_state_dict(checkpoint['state_dict'])
         if dataset == 'cifar10':
             model.features = model.features.module
         else:
             model = model.module
-    return model
+    return model.cpu()
